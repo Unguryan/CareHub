@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CareHub.Shared.Contracts</AssemblyName>
+    <RootNamespace>CareHub.Shared.Contracts</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Tests/**/*.cs" />
+  </ItemGroup>
+</Project>
