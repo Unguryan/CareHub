@@ -284,6 +284,7 @@ For **local experimentation**, switching back to **Seed mode** is the fastest wa
 
 | Symptom | Things to check |
 |---------|------------------|
+| `open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified` (or `Cannot connect to the Docker engine`) | **Start Docker Desktop** and wait until it is fully running; run `docker info` — it must succeed before `Run-CareHub.ps1`. Or use `-SkipDocker` if Postgres/RabbitMQ/Redis are already up. |
 | `dotnet ef` errors | Install: `dotnet tool install --global dotnet-ef` |
 | Postgres connection errors | `docker compose ps`, `docker compose logs postgres`, confirm port `5432` not used by another Postgres |
 | Gateway 502 / timeouts | Ensure target service is running on the port in `Gateway/.../appsettings.json` |

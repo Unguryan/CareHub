@@ -54,6 +54,53 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Assert-DockerDaemonReady {
+    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+        throw @"
+Docker CLI was not found in PATH.
+Install Docker Desktop for Windows: https://docs.docker.com/desktop/
+Then open a new PowerShell window and run this script again.
+"@
+    }
+
+    $prevEa = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    $null = & docker info 2>&1
+    $dockerOk = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $prevEa
+
+    if (-not $dockerOk) {
+        throw @"
+Cannot connect to the Docker engine. The daemon is not running or the CLI cannot reach it.
+
+What to do (Windows):
+  1. Start Docker Desktop from the Start menu.
+  2. Wait until it says Docker is running (whale icon idle in the system tray).
+  3. Run this script again.
+
+If you already have Postgres, RabbitMQ, and Redis running without Docker (same ports as docker-compose), use:
+  .\Run-CareHub.ps1 -Mode Seed -SkipDocker ...
+
+Check from a terminal: docker info
+"@
+    }
+}
+
+function Invoke-DockerCompose {
+    param(
+        [string[]] $ComposeArgs
+    )
+    $composeFile = Join-Path $Root 'docker-compose.yml'
+    $prevEa = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    & docker compose -f $composeFile @ComposeArgs 2>&1 | ForEach-Object { Write-Host $_ }
+    $exit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEa
+    if ($exit -ne 0) {
+        throw "docker compose failed (exit $exit). Fix the error above, or use -SkipDocker if dependencies are already up."
+    }
+}
+
 $Root = $PSScriptRoot
 Set-Location $Root
 
@@ -66,27 +113,32 @@ Write-Host "  Mode: $Mode  (environment variable CareHub__SeedDemoData=$seedValu
 Write-Host ""
 
 if (-not $SkipDocker) {
+    Assert-DockerDaemonReady
+
     if ($RecreateVolumes) {
         Write-Host "Docker: stopping stack and removing volumes..." -ForegroundColor Yellow
-        docker compose -f (Join-Path $Root 'docker-compose.yml') down -v
+        Invoke-DockerCompose -ComposeArgs @('down', '-v')
     }
 
     Write-Host "Docker: starting Postgres, RabbitMQ, Redis..." -ForegroundColor Yellow
-    docker compose -f (Join-Path $Root 'docker-compose.yml') up -d
+    Invoke-DockerCompose -ComposeArgs @('up', '-d')
 
     Write-Host "Waiting for Postgres (carehub-postgres)..." -ForegroundColor Yellow
     $deadline = (Get-Date).AddMinutes(3)
     $ready = $false
+    $prevEa = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
     while ((Get-Date) -lt $deadline) {
-        docker exec carehub-postgres pg_isready -U carehub 2>$null | Out-Null
+        $null = & docker exec carehub-postgres pg_isready -U carehub 2>&1
         if ($LASTEXITCODE -eq 0) {
             $ready = $true
             break
         }
         Start-Sleep -Seconds 2
     }
+    $ErrorActionPreference = $prevEa
     if (-not $ready) {
-        throw "Postgres did not become ready in time. Check: docker compose logs postgres"
+        throw "Postgres did not become ready in time. Try: docker compose -f docker-compose.yml logs postgres"
     }
     Write-Host "Postgres is ready." -ForegroundColor Green
 }

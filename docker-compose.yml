@@ -3,8 +3,6 @@
 # - Ports: 5432 Postgres, 5672 AMQP, 15672 RabbitMQ UI, 6379 Redis.
 # - One-command stack: docker compose up -d (from repo root), then run services per README / launchSettings.
 
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
