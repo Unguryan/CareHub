@@ -2,6 +2,7 @@ using CareHub.Schedule.Data;
 using CareHub.Schedule.Endpoints;
 using CareHub.Schedule.Seed;
 using CareHub.Schedule.Services;
+using CareHub.Shared.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,12 +12,7 @@ builder.Services.AddDbContext<ScheduleDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Schedule")));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Identity:Authority"];
-        options.Audience = "api";
-        options.RequireHttpsMetadata = false;
-    });
+    .AddCareHubResourceServerJwtBearer(builder.Configuration);
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<ScheduleService>();

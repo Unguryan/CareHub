@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { apiJson } from '../../api/client'
-import { useRole } from '../../auth/AuthContext'
+import { useRole } from '../../auth/useAuth'
 import { ErrorAlert, Loading } from '../../components/Ui'
 
 type Tab = 'visits' | 'revenue' | 'workload' | 'cancellations'

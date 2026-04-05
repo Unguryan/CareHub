@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { useAuth, useRole } from '../auth/AuthContext'
+import { useAuth, useRole } from '../auth/useAuth'
 import { NotificationBell } from '../features/notifications/NotificationBell'
 
 type NavItem = { to: string; label: string; roles: string[] }

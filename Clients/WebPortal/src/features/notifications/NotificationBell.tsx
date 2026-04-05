@@ -4,7 +4,7 @@ import {
   LogLevel,
 } from '@microsoft/signalr'
 import { useEffect, useRef, useState } from 'react'
-import { useAuth } from '../../auth/AuthContext'
+import { useAuth } from '../../auth/useAuth'
 
 type Toast = { id: number; title: string; body: string }
 

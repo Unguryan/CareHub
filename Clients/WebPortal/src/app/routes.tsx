@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { useAuth, useRole } from '../auth/AuthContext'
+import { useAuth, useRole } from '../auth/useAuth'
 import { AppLayout } from '../layouts/AppLayout'
 import { AppointmentsPage } from '../features/appointments/AppointmentsPage'
 import { AuditPage } from '../features/audit/AuditPage'

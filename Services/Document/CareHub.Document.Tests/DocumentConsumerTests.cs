@@ -12,6 +12,7 @@ using Xunit;
 
 namespace CareHub.Document.Tests;
 
+[Collection("Document integration")]
 public class DocumentConsumerTests : IClassFixture<DocumentTestFactory>
 {
     private readonly DocumentTestFactory _factory;

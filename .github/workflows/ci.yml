@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  webportal:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Clients/WebPortal
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Clients/WebPortal/package-lock.json
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore CareHub.sln
+
+      - name: Format (verify)
+        run: dotnet format CareHub.sln --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build CareHub.sln --no-restore -c Release
+
+      - name: Test
+        run: dotnet test CareHub.sln --no-build -c Release --settings CareHub.runsettings
+
+      - name: Vulnerable package report (informational)
+        run: dotnet list CareHub.sln package --vulnerable --include-transitive
+        continue-on-error: true

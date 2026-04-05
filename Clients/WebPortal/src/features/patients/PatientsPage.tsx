@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiJson } from '../../api/client'
 import { ErrorAlert, Loading, EmptyState } from '../../components/Ui'
-import { useRole } from '../../auth/AuthContext'
+import { useRole } from '../../auth/useAuth'
 import type { Patient } from './types'
 
 export function PatientsPage() {

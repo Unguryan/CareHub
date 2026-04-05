@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useAuth } from '../auth/AuthContext'
+import { useAuth } from '../auth/useAuth'
 
 export class ApiError extends Error {
   status: number

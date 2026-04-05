@@ -1,3 +1,8 @@
+# CareHub local dependencies (Phase 13 dev notes)
+# - Minimum RAM: ~2 GB free for Postgres + RabbitMQ + Redis containers (4 GB+ machine recommended).
+# - Ports: 5432 Postgres, 5672 AMQP, 15672 RabbitMQ UI, 6379 Redis.
+# - One-command stack: docker compose up -d (from repo root), then run services per README / launchSettings.
+
 version: '3.8'
 
 services:

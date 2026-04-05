@@ -3,6 +3,7 @@ using CareHub.Appointment.Endpoints;
 using CareHub.Appointment.Events;
 using CareHub.Appointment.Seed;
 using CareHub.Appointment.Services;
+using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -29,12 +30,7 @@ builder.Services.AddMassTransit(x =>
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Identity:Authority"];
-        options.Audience = "api";
-        options.RequireHttpsMetadata = false;
-    });
+    .AddCareHubResourceServerJwtBearer(builder.Configuration);
 
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();

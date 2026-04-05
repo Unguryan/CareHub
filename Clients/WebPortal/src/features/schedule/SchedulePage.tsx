@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { apiJson } from '../../api/client'
 import { ErrorAlert, Loading, EmptyState } from '../../components/Ui'
 
@@ -23,17 +23,18 @@ export function SchedulePage() {
     queryFn: () => apiJson<Doctor[]>('/api/doctors'),
   })
 
-  const slotsQuery = useQuery({
-    queryKey: ['slots', doctorId, date],
-    enabled: !!doctorId && !!date,
-    queryFn: () =>
-      apiJson<Slot[]>(`/api/doctors/${doctorId}/slots?date=${encodeURIComponent(date)}`),
-  })
+  const doctors = useMemo(() => doctorsQuery.data ?? [], [doctorsQuery.data])
+  const resolvedDoctorId =
+    doctorId !== '' ? doctorId : doctors.length > 0 ? doctors[0].id : ''
 
-  const doctors = doctorsQuery.data ?? []
-  useEffect(() => {
-    if (!doctorId && doctors.length > 0) setDoctorId(doctors[0].id)
-  }, [doctorId, doctors])
+  const slotsQuery = useQuery({
+    queryKey: ['slots', resolvedDoctorId, date],
+    enabled: !!resolvedDoctorId && !!date,
+    queryFn: () =>
+      apiJson<Slot[]>(
+        `/api/doctors/${resolvedDoctorId}/slots?date=${encodeURIComponent(date)}`,
+      ),
+  })
 
   return (
     <div>
@@ -50,7 +51,7 @@ export function SchedulePage() {
           <select
             id="doctor"
             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            value={doctorId}
+            value={resolvedDoctorId}
             onChange={(e) => setDoctorId(e.target.value)}
           >
             <option value="">Select…</option>

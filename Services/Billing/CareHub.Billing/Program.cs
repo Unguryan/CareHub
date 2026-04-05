@@ -4,6 +4,7 @@ using CareHub.Billing.Endpoints;
 using CareHub.Billing.Events;
 using CareHub.Billing.Seed;
 using CareHub.Billing.Services;
+using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -32,12 +33,7 @@ builder.Services.AddMassTransit(x =>
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Identity:Authority"];
-        options.Audience = "api";
-        options.RequireHttpsMetadata = false;
-    });
+    .AddCareHubResourceServerJwtBearer(builder.Configuration);
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<BillingEventPublisher>();

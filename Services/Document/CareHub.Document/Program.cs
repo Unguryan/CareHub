@@ -6,6 +6,7 @@ using CareHub.Document.Options;
 using CareHub.Document.Pdf;
 using CareHub.Document.Storage;
 using CareHub.Document.Services;
+using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -68,12 +69,7 @@ builder.Services.AddMassTransit(x =>
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Identity:Authority"];
-        options.Audience = "api";
-        options.RequireHttpsMetadata = false;
-    });
+    .AddCareHubResourceServerJwtBearer(builder.Configuration);
 
 builder.Services.AddAuthorization();
 builder.Services.AddHealthChecks();

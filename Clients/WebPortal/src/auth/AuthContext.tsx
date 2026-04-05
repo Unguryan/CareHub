@@ -1,13 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { AuthContext, type AuthContextValue } from './auth-context'
 import { rolesFromAccessToken, subjectFromAccessToken, tokenExpiresAt } from './jwt'
 
 const REFRESH_KEY = 'carehub_refresh_token'
@@ -17,19 +9,6 @@ type TokenBundle = {
   refreshToken: string
   expiresAt: number | null
 }
-
-type AuthContextValue = {
-  accessToken: string | null
-  roles: string[]
-  userId: string | null
-  isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<void>
-  logout: () => void
-  refreshAccessToken: () => Promise<boolean>
-  gatewayUrl: string
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
 
 function gatewayBase(): string {
   return import.meta.env.VITE_GATEWAY_URL.replace(/\/$/, '')
@@ -169,15 +148,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
-}
-
-export function useRole(allowed: string[]): boolean {
-  const { roles } = useAuth()
-  return allowed.some((r) => roles.includes(r))
 }

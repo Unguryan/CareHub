@@ -3,6 +3,7 @@ using CareHub.Patient.Endpoints;
 using CareHub.Patient.Events;
 using CareHub.Patient.Seed;
 using CareHub.Patient.Services;
+using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -26,14 +27,8 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-// Authentication — JWT validated independently per service
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Identity:Authority"];
-        options.Audience = "api";
-        options.RequireHttpsMetadata = false;
-    });
+    .AddCareHubResourceServerJwtBearer(builder.Configuration);
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<PatientEventPublisher>();

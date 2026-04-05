@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { apiFetch, apiJson } from '../../api/client'
-import { useRole } from '../../auth/AuthContext'
+import { useRole } from '../../auth/useAuth'
 import { ErrorAlert, Loading, EmptyState } from '../../components/Ui'
 
 const statusLabel: Record<number, string> = {

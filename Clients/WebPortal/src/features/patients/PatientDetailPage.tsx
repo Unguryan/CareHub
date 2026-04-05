@@ -1,8 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState, type FormEvent } from 'react'
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiFetch, apiJson } from '../../api/client'
-import { useRole } from '../../auth/AuthContext'
+import { useRole } from '../../auth/useAuth'
 import { ErrorAlert, Loading, EmptyState } from '../../components/Ui'
 import type { Patient } from './types'
 
@@ -22,47 +27,6 @@ export function PatientDetailPage() {
     queryKey: ['patient-history', id],
     enabled: !!id && id !== 'new' && tab === 'history',
     queryFn: () => apiJson<unknown[]>(`/api/patients/${id}/history`),
-  })
-
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    phoneNumber: '',
-    email: '',
-    dateOfBirth: '',
-  })
-
-  useEffect(() => {
-    if (patientQuery.data) {
-      const p = patientQuery.data
-      setForm({
-        firstName: p.firstName,
-        lastName: p.lastName,
-        phoneNumber: p.phoneNumber,
-        email: p.email ?? '',
-        dateOfBirth: p.dateOfBirth,
-      })
-    }
-  }, [patientQuery.data])
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiFetch(`/api/patients/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          firstName: form.firstName,
-          lastName: form.lastName,
-          phoneNumber: form.phoneNumber,
-          email: form.email || null,
-          dateOfBirth: form.dateOfBirth,
-        }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['patient', id] })
-      void qc.invalidateQueries({ queryKey: ['patients'] })
-    },
   })
 
   if (id === 'new') {
@@ -113,76 +77,7 @@ export function PatientDetailPage() {
       </div>
 
       {tab === 'profile' ? (
-        <div className="max-w-lg rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          {canEdit ? (
-            <form
-              onSubmit={(e: FormEvent) => {
-                e.preventDefault()
-                saveMutation.mutate()
-              }}
-              className="flex flex-col gap-3"
-            >
-              <Field
-                label="First name"
-                value={form.firstName}
-                onChange={(v) => setForm((f) => ({ ...f, firstName: v }))}
-              />
-              <Field
-                label="Last name"
-                value={form.lastName}
-                onChange={(v) => setForm((f) => ({ ...f, lastName: v }))}
-              />
-              <Field
-                label="Phone"
-                value={form.phoneNumber}
-                onChange={(v) => setForm((f) => ({ ...f, phoneNumber: v }))}
-              />
-              <Field
-                label="Email"
-                value={form.email}
-                onChange={(v) => setForm((f) => ({ ...f, email: v }))}
-              />
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="dob">
-                  Date of birth
-                </label>
-                <input
-                  id="dob"
-                  type="date"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  value={form.dateOfBirth}
-                  onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
-                  required
-                />
-              </div>
-              {saveMutation.isError ? (
-                <ErrorAlert message={(saveMutation.error as Error).message} />
-              ) : null}
-              <button
-                type="submit"
-                disabled={saveMutation.isPending}
-                className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60"
-              >
-                Save
-              </button>
-            </form>
-          ) : (
-            <dl className="grid grid-cols-1 gap-2 text-sm">
-              <div>
-                <dt className="text-slate-500">Phone</dt>
-                <dd>{p.phoneNumber}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Email</dt>
-                <dd>{p.email ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Date of birth</dt>
-                <dd>{p.dateOfBirth}</dd>
-              </div>
-            </dl>
-          )}
-        </div>
+        <PatientProfilePanel key={p.id} patient={p} patientId={p.id} canEdit={canEdit} qc={qc} />
       ) : (
         <div>
           {historyQuery.isPending ? <Loading /> : null}
@@ -195,6 +90,119 @@ export function PatientDetailPage() {
             </pre>
           ) : null}
         </div>
+      )}
+    </div>
+  )
+}
+
+function PatientProfilePanel({
+  patient,
+  patientId,
+  canEdit,
+  qc,
+}: {
+  patient: Patient
+  patientId: string
+  canEdit: boolean
+  qc: QueryClient
+}) {
+  const [form, setForm] = useState({
+    firstName: patient.firstName,
+    lastName: patient.lastName,
+    phoneNumber: patient.phoneNumber,
+    email: patient.email ?? '',
+    dateOfBirth: patient.dateOfBirth,
+  })
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch(`/api/patients/${patientId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          phoneNumber: form.phoneNumber,
+          email: form.email || null,
+          dateOfBirth: form.dateOfBirth,
+        }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['patient', patientId] })
+      void qc.invalidateQueries({ queryKey: ['patients'] })
+    },
+  })
+
+  return (
+    <div className="max-w-lg rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      {canEdit ? (
+        <form
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault()
+            saveMutation.mutate()
+          }}
+          className="flex flex-col gap-3"
+        >
+          <Field
+            label="First name"
+            value={form.firstName}
+            onChange={(v) => setForm((f) => ({ ...f, firstName: v }))}
+          />
+          <Field
+            label="Last name"
+            value={form.lastName}
+            onChange={(v) => setForm((f) => ({ ...f, lastName: v }))}
+          />
+          <Field
+            label="Phone"
+            value={form.phoneNumber}
+            onChange={(v) => setForm((f) => ({ ...f, phoneNumber: v }))}
+          />
+          <Field
+            label="Email"
+            value={form.email}
+            onChange={(v) => setForm((f) => ({ ...f, email: v }))}
+          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="dob">
+              Date of birth
+            </label>
+            <input
+              id="dob"
+              type="date"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={form.dateOfBirth}
+              onChange={(e) => setForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
+              required
+            />
+          </div>
+          {saveMutation.isError ? (
+            <ErrorAlert message={(saveMutation.error as Error).message} />
+          ) : null}
+          <button
+            type="submit"
+            disabled={saveMutation.isPending}
+            className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60"
+          >
+            Save
+          </button>
+        </form>
+      ) : (
+        <dl className="grid grid-cols-1 gap-2 text-sm">
+          <div>
+            <dt className="text-slate-500">Phone</dt>
+            <dd>{patient.phoneNumber}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Email</dt>
+            <dd>{patient.email ?? '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Date of birth</dt>
+            <dd>{patient.dateOfBirth}</dd>
+          </div>
+        </dl>
       )}
     </div>
   )

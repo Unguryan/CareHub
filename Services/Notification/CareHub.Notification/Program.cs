@@ -5,6 +5,7 @@ using CareHub.Notification.Hubs;
 using CareHub.Notification.Messaging;
 using CareHub.Notification.Seed;
 using CareHub.Notification.Services;
+using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -21,11 +22,8 @@ builder.Services.AddDbContext<NotificationDbContext>(options =>
 
 builder.Services.AddSignalR();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddCareHubResourceServerJwtBearer(builder.Configuration, options =>
     {
-        options.Authority = builder.Configuration["Identity:Authority"];
-        options.Audience = "api";
-        options.RequireHttpsMetadata = false;
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>

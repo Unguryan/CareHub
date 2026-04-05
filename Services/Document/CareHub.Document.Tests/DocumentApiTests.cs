@@ -7,6 +7,7 @@ using Xunit;
 
 namespace CareHub.Document.Tests;
 
+[Collection("Document integration")]
 public class DocumentApiTests : IClassFixture<DocumentTestFactory>
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
