@@ -1,0 +1,125 @@
+﻿<Window x:Class="CareHub.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:CareHub.Desktop.Converters"
+        mc:Ignorable="d"
+        Title="CareHub Desktop" Height="640" Width="980"
+        Background="#F8FAFC">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
+    </Window.Resources>
+    <DockPanel Margin="12">
+        <Border DockPanel.Dock="Top" Padding="10" Background="White" CornerRadius="8"
+                BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,10">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left" FontSize="18" FontWeight="SemiBold" Foreground="#0F766E"
+                           VerticalAlignment="Center" Text="CareHub Desktop" />
+                <TextBlock Text="{Binding StatusMessage}" Margin="16,0,0,0" VerticalAlignment="Center"
+                           Foreground="#64748B" TextWrapping="Wrap" />
+            </DockPanel>
+        </Border>
+
+        <Border Visibility="{Binding IsSignedIn, Converter={StaticResource InverseBoolToVis}}"
+                Padding="16" Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1">
+            <StackPanel MaxWidth="360" HorizontalAlignment="Left">
+                <TextBlock FontWeight="SemiBold" FontSize="15" Margin="0,0,0,12" Text="Sign in" />
+                <Label Content="Phone" Target="{Binding ElementName=PhoneBox}" />
+                <TextBox x:Name="PhoneBox" Text="{Binding LoginPhone, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                <Label Content="Password" Target="{Binding ElementName=PassBox}" />
+                <PasswordBox x:Name="PassBox" Margin="0,0,0,12" PasswordChanged="PassBox_OnPasswordChanged" />
+                <Button Content="Sign in" Padding="8,6" Command="{Binding LoginCommand}" />
+            </StackPanel>
+        </Border>
+
+        <TabControl Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
+            <TabItem Header="Patients">
+                <DockPanel Margin="8">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBox Width="220" Text="{Binding PatientSearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Search query" />
+                        <Button Content="Search" Margin="8,0,0,0" Padding="12,6" Command="{Binding SearchPatientsCommand}" />
+                        <Button Content="Sign out" Margin="16,0,0,0" Padding="12,6" Command="{Binding LogoutCommand}" />
+                    </StackPanel>
+                    <DataGrid ItemsSource="{Binding Patients}" IsReadOnly="True" AutoGenerateColumns="False"
+                              CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding FirstName}" Width="*" />
+                            <DataGridTextColumn Header="Last" Binding="{Binding LastName}" Width="*" />
+                            <DataGridTextColumn Header="Phone" Binding="{Binding PhoneNumber}" Width="120" />
+                            <DataGridTemplateColumn Header="Check-in">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="Check-in"
+                                                Command="{Binding DataContext.CheckInCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}" Padding="6,2" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="Registration">
+                <StackPanel Margin="12" MaxWidth="400" HorizontalAlignment="Left">
+                    <TextBlock FontWeight="SemiBold" Margin="0,0,0,8" Text="New patient" />
+                    <Label Content="First name" Target="{Binding ElementName=N1}" />
+                    <TextBox x:Name="N1" Text="{Binding NewFirst, UpdateSourceTrigger=PropertyChanged}" />
+                    <Label Content="Last name" Target="{Binding ElementName=N2}" />
+                    <TextBox x:Name="N2" Text="{Binding NewLast, UpdateSourceTrigger=PropertyChanged}" />
+                    <Label Content="Phone" Target="{Binding ElementName=N3}" />
+                    <TextBox x:Name="N3" Text="{Binding NewPhone, UpdateSourceTrigger=PropertyChanged}" />
+                    <Label Content="Email" Target="{Binding ElementName=N4}" />
+                    <TextBox x:Name="N4" Text="{Binding NewEmail, UpdateSourceTrigger=PropertyChanged}" />
+                    <Label Content="Date of birth" />
+                    <DatePicker SelectedDate="{Binding NewDob}" Margin="0,0,0,8" />
+                    <Button Content="Register" HorizontalAlignment="Left" Padding="12,6"
+                            Command="{Binding RegisterPatientCommand}" />
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Appointments">
+                <StackPanel Margin="12" MaxWidth="480" HorizontalAlignment="Left">
+                    <TextBlock FontWeight="SemiBold" Margin="0,0,0,8" Text="Book appointment" />
+                    <Label Content="Patient ID" />
+                    <TextBox Text="{Binding BookPatientId, UpdateSourceTrigger=PropertyChanged}" />
+                    <Label Content="Doctor ID" />
+                    <TextBox Text="{Binding BookDoctorId, UpdateSourceTrigger=PropertyChanged}" />
+                    <Label Content="Branch ID" />
+                    <TextBox Text="{Binding BookBranchId, UpdateSourceTrigger=PropertyChanged}" />
+                    <Label Content="Start (local, parseable)" />
+                    <TextBox Text="{Binding BookScheduledAtText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Example: 2026-04-06T14:30" Margin="0,0,0,8" />
+                    <Label Content="Duration (min)" />
+                    <TextBox Text="{Binding BookDuration, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                    <Button Content="Book" HorizontalAlignment="Left" Padding="12,6"
+                            Command="{Binding BookAppointmentCommand}" />
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Lab queue" Visibility="{Binding ShowLabTab, Converter={StaticResource BoolToVis}}">
+                <DockPanel Margin="8">
+                    <Button DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="0,0,0,8" Padding="12,6"
+                            Content="Refresh queue" Command="{Binding LoadLabQueueCommand}" />
+                    <DataGrid ItemsSource="{Binding LabOrders}" IsReadOnly="True" AutoGenerateColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Order ID" Binding="{Binding Id}" Width="*" />
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80" />
+                            <DataGridTextColumn Header="Patient" Binding="{Binding PatientId}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="Print / PDF">
+                <StackPanel Margin="12" MaxWidth="420" HorizontalAlignment="Left">
+                    <TextBlock TextWrapping="Wrap" Foreground="#64748B" Margin="0,0,0,8"
+                               Text="Download a document by GUID, then print from your PDF viewer." />
+                    <Label Content="Document ID" />
+                    <TextBox Text="{Binding DocumentId, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Content="Save PDF…" Margin="0,8,0,0" HorizontalAlignment="Left" Padding="12,6"
+                            Command="{Binding DownloadDocumentCommand}" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

@@ -9,7 +9,7 @@ public static class IdentitySeedData
 {
     public static readonly string[] AllRoles =
     [
-        "Admin", "Doctor", "Receptionist", "CallCenter",
+        "Admin", "Doctor", "Manager", "Receptionist", "CallCenter",
         "LabTechnician", "Accountant", "Auditor"
     ];
 
@@ -87,6 +87,26 @@ public static class IdentitySeedData
                 {
                     Permissions.Endpoints.Token,
                     Permissions.GrantTypes.ClientCredentials,
+                    Permissions.Prefixes.Scope + "api",
+                }
+            });
+        }
+
+        if (await manager.FindByClientIdAsync("carehub-web") is null)
+        {
+            await manager.CreateAsync(new OpenIddictApplicationDescriptor
+            {
+                ClientId = "carehub-web",
+                ClientSecret = "web-secret",
+                DisplayName = "CareHub Web Portal (dev)",
+                Permissions =
+                {
+                    Permissions.Endpoints.Token,
+                    Permissions.GrantTypes.Password,
+                    Permissions.GrantTypes.RefreshToken,
+                    Permissions.Prefixes.Scope + "openid",
+                    Permissions.Scopes.Profile,
+                    Permissions.Prefixes.Scope + "offline_access",
                     Permissions.Prefixes.Scope + "api",
                 }
             });

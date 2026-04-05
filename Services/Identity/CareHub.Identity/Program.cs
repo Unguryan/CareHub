@@ -138,6 +138,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");
+app.MapAuthDiscoveryEndpoints();
 app.MapInternalEndpoints();
 
 app.Run();
