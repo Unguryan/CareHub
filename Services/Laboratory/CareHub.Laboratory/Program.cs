@@ -4,6 +4,7 @@ using CareHub.Laboratory.Endpoints;
 using CareHub.Laboratory.Events;
 using CareHub.Laboratory.Seed;
 using CareHub.Laboratory.Services;
+using CareHub.Shared.AspNetCore;
 using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -42,9 +43,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.SeedDemoData())
 {
-    await LaboratorySeedData.SeedAsync(scope.ServiceProvider);
+    using (var scope = app.Services.CreateScope())
+    {
+        await LaboratorySeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 app.UseAuthentication();

@@ -3,6 +3,7 @@ using CareHub.Appointment.Endpoints;
 using CareHub.Appointment.Events;
 using CareHub.Appointment.Seed;
 using CareHub.Appointment.Services;
+using CareHub.Shared.AspNetCore;
 using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -53,9 +54,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.SeedDemoData())
 {
-    await AppointmentSeedData.SeedAsync(scope.ServiceProvider);
+    using (var scope = app.Services.CreateScope())
+    {
+        await AppointmentSeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 app.UseAuthentication();

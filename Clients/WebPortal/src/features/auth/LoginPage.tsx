@@ -79,8 +79,17 @@ export function LoginPage() {
           </button>
         </form>
         <p className="mt-6 text-xs text-slate-500">
-          Dev seed admin: <code className="rounded bg-slate-100 px-1">+380000000000</code> /{' '}
+          Demo sign-in (Seed mode): admin{' '}
+          <code className="rounded bg-slate-100 px-1">+380000000000</code> /{' '}
           <code className="rounded bg-slate-100 px-1">Admin1234!</code>
+          {' — '}
+          doctor1 <code className="rounded bg-slate-100 px-1">+380000000001</code> /{' '}
+          <code className="rounded bg-slate-100 px-1">Doctor1234!</code>
+          {' — '}
+          user1 (receptionist){' '}
+          <code className="rounded bg-slate-100 px-1">+380000000002</code> /{' '}
+          <code className="rounded bg-slate-100 px-1">User1234!</code>. See repository{' '}
+          <code className="rounded bg-slate-100 px-1">README.md</code> for all accounts and Clean mode.
         </p>
       </div>
     </div>

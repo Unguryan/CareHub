@@ -5,6 +5,7 @@ using CareHub.Identity.Internal;
 using CareHub.Identity.Models;
 using CareHub.Identity.Seed;
 using CareHub.Identity.Services;
+using CareHub.Shared.AspNetCore;
 using MassTransit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,10 @@ using StackExchange.Redis;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var urls = builder.Configuration["Urls"];
+if (!string.IsNullOrEmpty(urls))
+    builder.WebHost.UseUrls(urls);
 
 // Database
 builder.Services.AddDbContext<IdentityDbContext>(options =>
@@ -128,10 +133,10 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Seed data on startup
+// Seed infrastructure (always) and optional demo users
 using (var scope = app.Services.CreateScope())
 {
-    await IdentitySeedData.SeedAsync(scope.ServiceProvider);
+    await IdentitySeedData.SeedAsync(scope.ServiceProvider, app.Configuration);
 }
 
 app.UseAuthentication();

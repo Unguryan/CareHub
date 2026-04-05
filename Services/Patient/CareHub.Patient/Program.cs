@@ -3,6 +3,7 @@ using CareHub.Patient.Endpoints;
 using CareHub.Patient.Events;
 using CareHub.Patient.Seed;
 using CareHub.Patient.Services;
+using CareHub.Shared.AspNetCore;
 using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -37,10 +38,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// Seed data on startup
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.SeedDemoData())
 {
-    await PatientSeedData.SeedAsync(scope.ServiceProvider);
+    using (var scope = app.Services.CreateScope())
+    {
+        await PatientSeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 app.UseAuthentication();

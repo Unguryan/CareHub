@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var urls = builder.Configuration["Urls"];
+if (!string.IsNullOrEmpty(urls))
+    builder.WebHost.UseUrls(urls);
+
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                   ?? ["http://localhost:5173", "http://127.0.0.1:5173"];
 

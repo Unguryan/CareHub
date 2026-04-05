@@ -4,6 +4,7 @@ using CareHub.Billing.Endpoints;
 using CareHub.Billing.Events;
 using CareHub.Billing.Seed;
 using CareHub.Billing.Services;
+using CareHub.Shared.AspNetCore;
 using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -42,9 +43,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.SeedDemoData())
 {
-    await BillingSeedData.SeedAsync(scope.ServiceProvider);
+    using (var scope = app.Services.CreateScope())
+    {
+        await BillingSeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 app.UseAuthentication();

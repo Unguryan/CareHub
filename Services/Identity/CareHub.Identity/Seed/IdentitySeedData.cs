@@ -1,5 +1,7 @@
 using CareHub.Identity.Models;
+using CareHub.Shared.AspNetCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -13,10 +15,20 @@ public static class IdentitySeedData
         "LabTechnician", "Accountant", "Auditor"
     ];
 
-    public static async Task SeedAsync(IServiceProvider services)
+    private static readonly Guid DefaultBranchId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+    public static async Task SeedAsync(IServiceProvider services, IConfiguration configuration)
+    {
+        await SeedInfrastructureAsync(services);
+        if (!configuration.SeedDemoData())
+            return;
+
+        await SeedDemoUsersAsync(services);
+    }
+
+    private static async Task SeedInfrastructureAsync(IServiceProvider services)
     {
         await SeedRolesAsync(services);
-        await SeedAdminUserAsync(services);
         await SeedOidcClientsAsync(services);
     }
 
@@ -30,24 +42,43 @@ public static class IdentitySeedData
         }
     }
 
-    private static async Task SeedAdminUserAsync(IServiceProvider services)
+    private static async Task SeedDemoUsersAsync(IServiceProvider services)
     {
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        const string adminPhone = "+380000000000";
 
-        if (await userManager.FindByNameAsync(adminPhone) is not null) return;
+        (string Phone, string Password, string Role)[] accounts =
+        [
+            ("+380000000000", "Admin1234!", "Admin"),
+            ("+380000000001", "Doctor1234!", "Doctor"),
+            ("+380000000002", "User1234!", "Receptionist"),
+            ("+380000000003", "Manager1234!", "Manager"),
+        ];
 
-        var admin = new ApplicationUser
+        foreach (var (phone, password, role) in accounts)
+            await EnsureUserAsync(userManager, phone, password, role, DefaultBranchId);
+    }
+
+    private static async Task EnsureUserAsync(
+        UserManager<ApplicationUser> userManager,
+        string phone,
+        string password,
+        string role,
+        Guid branchId)
+    {
+        if (await userManager.FindByNameAsync(phone) is not null)
+            return;
+
+        var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
-            UserName = adminPhone,
-            PhoneNumber = adminPhone,
-            BranchId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            UserName = phone,
+            PhoneNumber = phone,
+            BranchId = branchId,
             PhoneNumberConfirmed = true,
         };
 
-        await userManager.CreateAsync(admin, "Admin1234!");
-        await userManager.AddToRoleAsync(admin, "Admin");
+        await userManager.CreateAsync(user, password);
+        await userManager.AddToRoleAsync(user, role);
     }
 
     private static async Task SeedOidcClientsAsync(IServiceProvider services)

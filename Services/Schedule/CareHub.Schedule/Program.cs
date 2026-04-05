@@ -2,6 +2,7 @@ using CareHub.Schedule.Data;
 using CareHub.Schedule.Endpoints;
 using CareHub.Schedule.Seed;
 using CareHub.Schedule.Services;
+using CareHub.Shared.AspNetCore;
 using CareHub.Shared.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -20,9 +21,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.SeedDemoData())
 {
-    await ScheduleSeedData.SeedAsync(scope.ServiceProvider);
+    using (var scope = app.Services.CreateScope())
+    {
+        await ScheduleSeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 app.UseAuthentication();

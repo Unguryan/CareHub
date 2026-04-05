@@ -5,6 +5,7 @@ using CareHub.Notification.Hubs;
 using CareHub.Notification.Messaging;
 using CareHub.Notification.Seed;
 using CareHub.Notification.Services;
+using CareHub.Shared.AspNetCore;
 using CareHub.Shared.AspNetCore.Authentication;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -86,9 +87,12 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.SeedDemoData())
 {
-    await NotificationSeedData.SeedAsync(scope.ServiceProvider);
+    using (var scope = app.Services.CreateScope())
+    {
+        await NotificationSeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 app.UseAuthentication();
