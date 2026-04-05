@@ -18,6 +18,8 @@ public class IdentityTestFactory : WebApplicationFactory<Program>
     {
         _connection.Open();
 
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureServices(services =>
         {
             // Remove ALL EF Core registrations for this context (provider + options config)

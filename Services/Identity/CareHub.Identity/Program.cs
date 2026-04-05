@@ -1,12 +1,16 @@
 using CareHub.Identity.Auth;
 using CareHub.Identity.Data;
 using CareHub.Identity.Events;
+using CareHub.Identity.Internal;
 using CareHub.Identity.Models;
 using CareHub.Identity.Seed;
+using CareHub.Identity.Services;
 using MassTransit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
+using StackExchange.Redis;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,9 +27,9 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     options.Password.RequiredLength = 8;
     options.Password.RequireNonAlphanumeric = false;
     options.User.RequireUniqueEmail = false;
-    options.ClaimsIdentity.UserNameClaimType = OpenIddictConstants.Claims.Name;
-    options.ClaimsIdentity.UserIdClaimType = OpenIddictConstants.Claims.Subject;
-    options.ClaimsIdentity.RoleClaimType = OpenIddictConstants.Claims.Role;
+    options.ClaimsIdentity.UserNameClaimType = Claims.Name;
+    options.ClaimsIdentity.UserIdClaimType = Claims.Subject;
+    options.ClaimsIdentity.RoleClaimType = Claims.Role;
 })
 .AddEntityFrameworkStores<IdentityDbContext>()
 .AddDefaultTokenProviders();
@@ -48,9 +52,9 @@ builder.Services.AddOpenIddict()
                .AllowRefreshTokenFlow();
 
         options.RegisterScopes(
-            OpenIddictConstants.Scopes.OpenId,
-            OpenIddictConstants.Scopes.Profile,
-            OpenIddictConstants.Scopes.OfflineAccess,
+            Scopes.OpenId,
+            Scopes.Profile,
+            Scopes.OfflineAccess,
             "api");
 
         options.AddDevelopmentEncryptionCertificate()
@@ -84,6 +88,39 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<IOtpService, MemoryOtpService>();
+    builder.Services.AddSingleton<ITelegramBotRelay, NoOpTelegramBotRelay>();
+}
+else
+{
+    var redisConnection = builder.Configuration["Redis:ConnectionString"];
+    if (!string.IsNullOrEmpty(redisConnection))
+    {
+        builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
+            ConnectionMultiplexer.Connect(redisConnection));
+        builder.Services.AddSingleton<IOtpService, RedisOtpService>();
+    }
+    else
+    {
+        builder.Services.AddSingleton<IOtpService, MemoryOtpService>();
+    }
+
+    var botBase = builder.Configuration["TelegramBot:InternalBaseUrl"];
+    if (!string.IsNullOrEmpty(botBase))
+    {
+        builder.Services.AddHttpClient<ITelegramBotRelay, TelegramBotRelay>(client =>
+        {
+            client.BaseAddress = new Uri(botBase.TrimEnd('/') + "/");
+        });
+    }
+    else
+    {
+        builder.Services.AddSingleton<ITelegramBotRelay, NoOpTelegramBotRelay>();
+    }
+}
+
 builder.Services.AddScoped<UserEventPublisher>();
 builder.Services.AddHealthChecks();
 builder.Services.AddAuthentication();
@@ -101,6 +138,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");
+app.MapInternalEndpoints();
 
 app.Run();
 
