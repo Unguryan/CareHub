@@ -170,4 +170,19 @@ public class LabOrderService
         await _events.PublishLabResultReadyAsync(order, userId, DateTime.UtcNow);
         return LabOrderResponse.FromEntity(order);
     }
+
+    public async Task<LabOrderDocumentContext?> GetDocumentContextAsync(Guid labOrderId, CancellationToken ct = default)
+    {
+        var o = await _db.LabOrders.AsNoTracking().FirstOrDefaultAsync(x => x.Id == labOrderId, ct);
+        return o is null
+            ? null
+            : new LabOrderDocumentContext(
+                o.Id,
+                o.AppointmentId,
+                o.PatientId,
+                o.DoctorId,
+                o.BranchId,
+                o.ResultSummary,
+                o.ResultEnteredAt);
+    }
 }

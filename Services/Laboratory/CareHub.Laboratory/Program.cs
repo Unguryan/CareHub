@@ -56,6 +56,7 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 app.MapLabOrderEndpoints();
+app.MapLaboratoryInternalEndpoints(app.Configuration);
 
 app.Run();
 
