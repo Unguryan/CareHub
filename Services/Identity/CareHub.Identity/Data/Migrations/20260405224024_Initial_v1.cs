@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CareHub.Identity.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class Initial_v1 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -32,6 +32,9 @@ namespace CareHub.Identity.Data.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     BranchId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TelegramChatId = table.Column<long>(type: "bigint", nullable: true),
+                    TelegramUsername = table.Column<string>(type: "text", nullable: true),
+                    TelegramLinkedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),

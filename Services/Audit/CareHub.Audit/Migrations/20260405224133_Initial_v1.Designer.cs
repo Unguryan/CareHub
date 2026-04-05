@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CareHub.Audit.Migrations
 {
     [DbContext(typeof(AuditDbContext))]
-    [Migration("20260405165645_Initial")]
-    partial class Initial
+    [Migration("20260405224133_Initial_v1")]
+    partial class Initial_v1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -67,7 +67,7 @@ namespace CareHub.Audit.Migrations
                         .HasFilter("\"BrokerMessageId\" IS NOT NULL");
 
                     b.HasIndex("RecordedAt", "Id")
-                        .IsDescending(true, true);
+                        .IsDescending();
 
                     b.HasIndex("ActionType", "RecordedAt", "Id")
                         .IsDescending(false, true, true);

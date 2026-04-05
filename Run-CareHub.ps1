@@ -32,6 +32,9 @@
 .PARAMETER SkipBuild
   Skip dotnet build.
 
+.PARAMETER VerboseMigrations
+  Show full EF Core and SQL logs during dotnet ef (default is quiet: no dbug flood, no scary "failed" SELECT on first migrate).
+
 .EXAMPLE
   .\Run-CareHub.ps1 -Mode Seed
   .\Run-CareHub.ps1 -Mode Clean -RecreateVolumes
@@ -48,7 +51,8 @@ param(
 
     [switch] $SkipDocker,
     [switch] $SkipMigrations,
-    [switch] $SkipBuild
+    [switch] $SkipBuild,
+    [switch] $VerboseMigrations
 )
 
 Set-StrictMode -Version Latest
@@ -98,6 +102,47 @@ function Invoke-DockerCompose {
     $ErrorActionPreference = $prevEa
     if ($exit -ne 0) {
         throw "docker compose failed (exit $exit). Fix the error above, or use -SkipDocker if dependencies are already up."
+    }
+}
+
+function Invoke-EfDatabaseUpdate {
+    param(
+        [Parameter(Mandatory)] [string] $ProjectPath,
+        [bool] $EfVerbose = $false
+    )
+
+    $verbosity = if ($EfVerbose) { 'normal' } else { 'minimal' }
+    $saved = @{}
+
+    if (-not $EfVerbose) {
+        $quietLevels = [ordered]@{
+            'Logging__LogLevel__Default'                                       = 'Warning'
+            'Logging__LogLevel__Microsoft'                                     = 'Warning'
+            'Logging__LogLevel__Microsoft.EntityFrameworkCore'                 = 'Warning'
+            'Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command' = 'None'
+            'Logging__LogLevel__Microsoft.EntityFrameworkCore.Infrastructure'  = 'Warning'
+            'Logging__LogLevel__Microsoft.EntityFrameworkCore.Migrations'      = 'Warning'
+        }
+        foreach ($key in $quietLevels.Keys) {
+            $saved[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+            Set-Item -Path "Env:$key" -Value $quietLevels[$key]
+        }
+    }
+
+    try {
+        & dotnet ef database update --project $ProjectPath --startup-project $ProjectPath --verbosity $verbosity
+        return $LASTEXITCODE
+    }
+    finally {
+        foreach ($key in $saved.Keys) {
+            $old = $saved[$key]
+            if ([string]::IsNullOrEmpty($old)) {
+                Remove-Item -Path "Env:$key" -ErrorAction SilentlyContinue
+            }
+            else {
+                Set-Item -Path "Env:$key" -Value $old
+            }
+        }
     }
 }
 
@@ -165,11 +210,16 @@ if (-not $SkipMigrations) {
         'Services\Reporting\CareHub.Reporting\CareHub.Reporting.csproj'
     )
 
+    if (-not $VerboseMigrations) {
+        Write-Host "EF migrations run in quiet mode (use -VerboseMigrations for full SQL/EF logs)." -ForegroundColor Gray
+        Write-Host "  Note: On a fresh DB, EF briefly probes __EFMigrationsHistory; that is normal, not a failure." -ForegroundColor DarkGray
+    }
+
     foreach ($rel in $efProjects) {
         $proj = Join-Path $Root $rel
         Write-Host "EF migrate: $rel" -ForegroundColor Yellow
-        dotnet ef database update --project $proj --startup-project $proj
-        if ($LASTEXITCODE -ne 0) {
+        $efExit = Invoke-EfDatabaseUpdate -ProjectPath $proj -EfVerbose:$VerboseMigrations.IsPresent
+        if ($efExit -ne 0) {
             throw "dotnet ef database update failed for $rel"
         }
     }
@@ -294,4 +344,4 @@ Write-Host ""
 Write-Host "Background jobs:" -ForegroundColor Cyan
 Get-Job | Format-Table -AutoSize Id, Name, State
 Write-Host "View logs: Receive-Job -Name 'CareHub.Identity' -Keep" -ForegroundColor Gray
-Write-Host "Stop all:  Get-Job | Stop-Job; Get-Job | Remove-Job" -ForegroundColor Gray
+Write-Host "Stop all:  .\Cleanup-CareHub.ps1   (or: Get-Job | Stop-Job; Get-Job | Remove-Job)" -ForegroundColor Gray

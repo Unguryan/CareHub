@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CareHub.Document.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDocument : Migration
+    public partial class Initial_v1 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

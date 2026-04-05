@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CareHub.Audit.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class Initial_v1 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -59,7 +59,7 @@ namespace CareHub.Audit.Migrations
                 name: "IX_AuditLogEntries_RecordedAt_Id",
                 table: "AuditLogEntries",
                 columns: new[] { "RecordedAt", "Id" },
-                descending: new[] { true, true });
+                descending: new bool[0]);
         }
 
         /// <inheritdoc />

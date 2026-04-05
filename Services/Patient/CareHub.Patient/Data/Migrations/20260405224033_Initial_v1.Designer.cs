@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CareHub.Patient.Data.Migrations
 {
     [DbContext(typeof(PatientDbContext))]
-    [Migration("20260404072504_Initial")]
-    partial class Initial
+    [Migration("20260405224033_Initial_v1")]
+    partial class Initial_v1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CareHub.Identity.Data.Migrations
 {
     [DbContext(typeof(IdentityDbContext))]
-    [Migration("20260403204328_Initial")]
-    partial class Initial
+    [Migration("20260405224024_Initial_v1")]
+    partial class Initial_v1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -72,6 +72,15 @@ namespace CareHub.Identity.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("TelegramChatId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("TelegramLinkedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TelegramUsername")
                         .HasColumnType("text");
 
                     b.Property<bool>("TwoFactorEnabled")

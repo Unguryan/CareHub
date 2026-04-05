@@ -64,7 +64,7 @@ namespace CareHub.Audit.Migrations
                         .HasFilter("\"BrokerMessageId\" IS NOT NULL");
 
                     b.HasIndex("RecordedAt", "Id")
-                        .IsDescending(true, true);
+                        .IsDescending();
 
                     b.HasIndex("ActionType", "RecordedAt", "Id")
                         .IsDescending(false, true, true);

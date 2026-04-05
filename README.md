@@ -19,7 +19,7 @@ This document is the main place to learn how to run everything on your machine, 
 9. [Demo accounts (Seed mode only)](#demo-accounts-seed-mode-only)
 10. [Web portal](#web-portal)
 11. [Running without the script (manual)](#running-without-the-script-manual)
-12. [Background jobs: logs and stopping](#background-jobs-logs-and-stopping)
+12. [Background jobs, cleanup, and stopping](#background-jobs-logs-and-stopping)
 13. [Clean mode: first real users](#clean-mode-first-real-users)
 14. [Troubleshooting](#troubleshooting)
 15. [Running automated tests](#running-automated-tests)
@@ -51,6 +51,7 @@ Optional:
 | `docker-compose.yml` | Local **Postgres** (all DBs), **RabbitMQ**, **Redis** |
 | `Scripts/init-databases.sql` | Creates per-service databases on first Postgres init |
 | `Run-CareHub.ps1` | **Single entry script**: Docker, migrations, build, optional run |
+| `Cleanup-CareHub.ps1` | Stop CareHub jobs, optional dotnet/node on dev ports, `docker compose down` |
 | `Gateway/CareHub.Gateway` | YARP reverse proxy; front door for the web app |
 | `Services/*` | Domain microservices |
 | `Clients/WebPortal` | React SPA (Vite); talks to the **gateway**, not directly to each service |
@@ -89,6 +90,7 @@ From the **repository root** (the folder that contains `CareHub.sln` and `docker
 | `-SkipDocker` | Assume containers already running. |
 | `-SkipMigrations` | Skip `dotnet ef database update`. |
 | `-SkipBuild` | Skip `dotnet build`. |
+| `-VerboseMigrations` | Full EF/SQL logs during `dotnet ef` (default is quiet). |
 
 The script sets **`$env:CareHub__SeedDemoData`** in **your current PowerShell session** so any `dotnet run` you start manually in that same window inherits the same mode.
 
@@ -158,6 +160,10 @@ dotnet ef database update --project <project> --startup-project <project>
 ```
 
 for each service that owns an EF Core context (Identity, Patient, Schedule, Appointment, Billing, Laboratory, Notification, Audit, Document, Reporting).
+
+By default the script uses **quiet** logging for `dotnet ef` (fewer lines, no EF `dbug:` spam). Pass **`-VerboseMigrations`** if you want the full SQL and EF Core trace.
+
+**If you run `dotnet ef` manually** and see `Failed executing DbCommand` for `SELECT … FROM "__EFMigrationsHistory"` on a **brand‑new** database, that is **normal**: the history table does not exist yet on the first check; EF then creates it and applies migrations. Your run succeeded if you see `Done.` and the script continues.
 
 If you prefer to run migrations yourself, use the same commands (from repo root) or your IDE’s EF tools.
 
@@ -259,7 +265,31 @@ Get-Job | Stop-Job
 Get-Job | Remove-Job
 ```
 
-If you prefer visible consoles for each service, skip `-Run` and start each `dotnet run` in its own terminal (after setting `CareHub__SeedDemoData` the same way in each, or using matching `appsettings`).
+### Full local teardown: `Cleanup-CareHub.ps1`
+
+From the repo root, one script can stop **CareHub\*** background jobs in the current PowerShell session, stop **dotnet** and **node** processes that are **listening** on CareHub dev ports (5001–5011, 53615, 5173), and run **`docker compose down`** for this repository’s stack.
+
+```powershell
+# Default: jobs + port listeners (dotnet/node only) + docker compose down
+.\Cleanup-CareHub.ps1
+
+# Also remove Docker volumes (wipes Postgres data from the compose volume)
+.\Cleanup-CareHub.ps1 -RemoveDockerVolumes
+
+# Only stop jobs; leave Docker and other terminals alone
+.\Cleanup-CareHub.ps1 -SkipDocker -SkipKillListeners
+```
+
+| Switch | Effect |
+|--------|--------|
+| `-RemoveDockerVolumes` | `docker compose down -v` |
+| `-SkipDocker` | Do not run Docker commands |
+| `-SkipJobs` | Do not stop CareHub* jobs |
+| `-SkipKillListeners` | Do not kill processes by port (use if another app shares 5173, etc.) |
+
+`Get-Help .\Cleanup-CareHub.ps1 -Full` has more detail. Port cleanup is **scoped** to process names `dotnet` and `node` so unrelated services on those ports are not stopped.
+
+If you prefer visible consoles for each service, skip `-Run` and start each `dotnet run` in its own terminal (after setting `CareHub__SeedDemoData` the same way in each, or using matching `appsettings`). For those processes, `Cleanup-CareHub.ps1` still helps via **listener** cleanup if they use the standard ports.
 
 ---
 
