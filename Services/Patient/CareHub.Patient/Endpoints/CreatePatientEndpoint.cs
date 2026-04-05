@@ -20,7 +20,7 @@ public static class CreatePatientEndpoint
         try
         {
             var patient = await patientService.CreateAsync(request, userId, branchId);
-            return Results.Created($"/patients/{patient.Id}", patient);
+            return Results.Created($"/api/patients/{patient.Id}", patient);
         }
         catch (DuplicatePhoneNumberException ex)
         {

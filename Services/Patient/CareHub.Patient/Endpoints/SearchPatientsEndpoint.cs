@@ -9,13 +9,14 @@ public static class SearchPatientsEndpoint
 {
     public static IEndpointRouteBuilder MapPatientEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/patients", HandleAsync).RequireAuthorization();
-        app.MapGet("/patients/{id:guid}", GetPatientEndpoint.HandleAsync).RequireAuthorization();
-        app.MapPost("/patients", CreatePatientEndpoint.HandleAsync)
+        var api = app.MapGroup("/api");
+        api.MapGet("/patients", HandleAsync).RequireAuthorization();
+        api.MapGet("/patients/{id:guid}", GetPatientEndpoint.HandleAsync).RequireAuthorization();
+        api.MapPost("/patients", CreatePatientEndpoint.HandleAsync)
             .RequireAuthorization(p => p.RequireRole("Receptionist", "Admin"));
-        app.MapPut("/patients/{id:guid}", UpdatePatientEndpoint.HandleAsync)
+        api.MapPut("/patients/{id:guid}", UpdatePatientEndpoint.HandleAsync)
             .RequireAuthorization(p => p.RequireRole("Receptionist", "Admin"));
-        app.MapGet("/patients/{id:guid}/history", GetPatientHistoryEndpoint.HandleAsync).RequireAuthorization();
+        api.MapGet("/patients/{id:guid}/history", GetPatientHistoryEndpoint.HandleAsync).RequireAuthorization();
         return app;
     }
 

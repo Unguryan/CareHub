@@ -24,7 +24,7 @@ public class SearchPatientsTests : IClassFixture<PatientTestFactory>
     [Fact]
     public async Task Search_Default_ReturnsBranch1PatientsOnly()
     {
-        var response = await _client.GetAsync("/patients");
+        var response = await _client.GetAsync("/api/patients");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var results = await response.Content.ReadFromJsonAsync<List<PatientResponse>>();
@@ -35,7 +35,7 @@ public class SearchPatientsTests : IClassFixture<PatientTestFactory>
     [Fact]
     public async Task Search_GlobalTrue_ReturnsAllBranches()
     {
-        var response = await _client.GetAsync("/patients?global=true");
+        var response = await _client.GetAsync("/api/patients?global=true");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var results = await response.Content.ReadFromJsonAsync<List<PatientResponse>>();
@@ -46,7 +46,7 @@ public class SearchPatientsTests : IClassFixture<PatientTestFactory>
     [Fact]
     public async Task Search_ByLastName_ReturnsMatchingPatient()
     {
-        var response = await _client.GetAsync("/patients?q=Kovalenko");
+        var response = await _client.GetAsync("/api/patients?q=Kovalenko");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var results = await response.Content.ReadFromJsonAsync<List<PatientResponse>>();
@@ -57,7 +57,7 @@ public class SearchPatientsTests : IClassFixture<PatientTestFactory>
     public async Task Search_ByPhone_ReturnsMatchingPatient()
     {
         // +380501234567 is Ivan Petrenko in Branch1
-        var response = await _client.GetAsync("/patients?q=%2B380501234567");
+        var response = await _client.GetAsync("/api/patients?q=%2B380501234567");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var results = await response.Content.ReadFromJsonAsync<List<PatientResponse>>();
@@ -68,7 +68,7 @@ public class SearchPatientsTests : IClassFixture<PatientTestFactory>
     public async Task Search_Branch2PatientWithoutGlobal_ReturnsEmpty()
     {
         // Mykola is in Branch2, caller is in Branch1 — not visible by default
-        var response = await _client.GetAsync("/patients?q=Shevchenko");
+        var response = await _client.GetAsync("/api/patients?q=Shevchenko");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var results = await response.Content.ReadFromJsonAsync<List<PatientResponse>>();
@@ -78,7 +78,7 @@ public class SearchPatientsTests : IClassFixture<PatientTestFactory>
     [Fact]
     public async Task Search_Branch2PatientWithGlobal_ReturnsPatient()
     {
-        var response = await _client.GetAsync("/patients?q=Shevchenko&global=true");
+        var response = await _client.GetAsync("/api/patients?q=Shevchenko&global=true");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var results = await response.Content.ReadFromJsonAsync<List<PatientResponse>>();
