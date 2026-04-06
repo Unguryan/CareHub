@@ -31,13 +31,15 @@ public class AppointmentService
         string? bearerToken,
         CancellationToken ct = default)
     {
+        var scheduledAtUtc = AsUtc(request.ScheduledAt);
+
         await _patients.EnsurePatientExistsAsync(request.PatientId, bearerToken, ct);
         await _schedule.EnsureSlotIsValidAsync(
-            request.DoctorId, request.ScheduledAt, request.DurationMinutes, bearerToken, ct);
+            request.DoctorId, scheduledAtUtc, request.DurationMinutes, bearerToken, ct);
 
         await ThrowIfOverlapAsync(
             request.DoctorId,
-            request.ScheduledAt,
+            scheduledAtUtc,
             request.DurationMinutes,
             excludeId: null,
             ct);
@@ -49,7 +51,7 @@ public class AppointmentService
             PatientId = request.PatientId,
             DoctorId = request.DoctorId,
             BranchId = request.BranchId,
-            ScheduledAt = request.ScheduledAt,
+            ScheduledAt = scheduledAtUtc,
             DurationMinutes = request.DurationMinutes,
             Status = AppointmentStatus.Scheduled,
             RequiresLabWork = false,
@@ -117,11 +119,12 @@ public class AppointmentService
 
         var previous = entity.ScheduledAt;
         var duration = request.DurationMinutes ?? entity.DurationMinutes;
+        var scheduledAtUtc = AsUtc(request.ScheduledAt);
 
-        await _schedule.EnsureSlotIsValidAsync(entity.DoctorId, request.ScheduledAt, duration, bearerToken, ct);
-        await ThrowIfOverlapAsync(entity.DoctorId, request.ScheduledAt, duration, entity.Id, ct);
+        await _schedule.EnsureSlotIsValidAsync(entity.DoctorId, scheduledAtUtc, duration, bearerToken, ct);
+        await ThrowIfOverlapAsync(entity.DoctorId, scheduledAtUtc, duration, entity.Id, ct);
 
-        entity.ScheduledAt = request.ScheduledAt;
+        entity.ScheduledAt = scheduledAtUtc;
         entity.DurationMinutes = duration;
         entity.UpdatedAt = DateTime.UtcNow;
 
@@ -210,5 +213,15 @@ public class AppointmentService
 
         if (hasOverlap)
             throw new AppointmentOverlapException();
+    }
+
+    private static DateTime AsUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
     }
 }

@@ -5,32 +5,45 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:converters="clr-namespace:CareHub.Desktop.Converters"
         mc:Ignorable="d"
-        Title="CareHub Desktop" Height="640" Width="980"
-        Background="#F8FAFC">
+        Title="CareHub Desktop" Height="720" Width="1120"
+        Background="{DynamicResource WindowBrush}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="12,8" />
+        </Style>
     </Window.Resources>
-    <DockPanel Margin="12">
-        <Border DockPanel.Dock="Top" Padding="10" Background="White" CornerRadius="8"
-                BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,10">
+    <DockPanel Margin="14">
+        <Border DockPanel.Dock="Top" Style="{StaticResource Card}" Margin="0,0,0,10">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Left" FontSize="18" FontWeight="SemiBold" Foreground="#0F766E"
-                           VerticalAlignment="Center" Text="CareHub Desktop" />
+                <TextBlock DockPanel.Dock="Left" FontSize="20" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                           Text="CareHub Desktop" />
                 <TextBlock Text="{Binding StatusMessage}" Margin="16,0,0,0" VerticalAlignment="Center"
-                           Foreground="#64748B" TextWrapping="Wrap" />
+                           Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
             </DockPanel>
         </Border>
 
         <Border Visibility="{Binding IsSignedIn, Converter={StaticResource InverseBoolToVis}}"
-                Padding="16" Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1">
+                Style="{StaticResource Card}">
             <StackPanel MaxWidth="360" HorizontalAlignment="Left">
                 <TextBlock FontWeight="SemiBold" FontSize="15" Margin="0,0,0,12" Text="Sign in" />
                 <Label Content="Phone" Target="{Binding ElementName=PhoneBox}" />
                 <TextBox x:Name="PhoneBox" Text="{Binding LoginPhone, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
                 <Label Content="Password" Target="{Binding ElementName=PassBox}" />
                 <PasswordBox x:Name="PassBox" Margin="0,0,0,12" PasswordChanged="PassBox_OnPasswordChanged" />
-                <Button Content="Sign in" Padding="8,6" Command="{Binding LoginCommand}" />
+                <Button Content="Sign in" Style="{StaticResource PrimaryButton}" Command="{Binding LoginCommand}" />
             </StackPanel>
         </Border>
 
@@ -82,18 +95,81 @@
             <TabItem Header="Appointments">
                 <StackPanel Margin="12" MaxWidth="480" HorizontalAlignment="Left">
                     <TextBlock FontWeight="SemiBold" Margin="0,0,0,8" Text="Book appointment" />
-                    <Label Content="Patient ID" />
-                    <TextBox Text="{Binding BookPatientId, UpdateSourceTrigger=PropertyChanged}" />
-                    <Label Content="Doctor ID" />
-                    <TextBox Text="{Binding BookDoctorId, UpdateSourceTrigger=PropertyChanged}" />
-                    <Label Content="Branch ID" />
-                    <TextBox Text="{Binding BookBranchId, UpdateSourceTrigger=PropertyChanged}" />
-                    <Label Content="Start (local, parseable)" />
+                    <TextBlock Text="No GUID typing. Use category and searchable selectors."
+                               Foreground="{DynamicResource MutedTextBrush}" Margin="0,0,0,8" />
+
+                    <Label Content="Patient search" />
+                    <TextBox Text="{Binding BookPatientSearch, UpdateSourceTrigger=PropertyChanged}" />
+                    <ComboBox Margin="0,4,0,8"
+                              IsEditable="True"
+                              IsTextSearchEnabled="True"
+                              StaysOpenOnEdit="True"
+                              ItemsSource="{Binding BookPatientsView}"
+                              SelectedItem="{Binding SelectedBookPatient}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <Run Text="{Binding LastName}" />
+                                    <Run Text=" " />
+                                    <Run Text="{Binding FirstName}" />
+                                    <Run Text=" - " />
+                                    <Run Text="{Binding PhoneNumber}" />
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Label Content="Category (specialty)" />
+                    <ComboBox ItemsSource="{Binding SpecialtyOptions}"
+                              SelectedItem="{Binding SelectedSpecialty}"
+                              Margin="0,0,0,8" />
+
+                    <Label Content="Doctor search" />
+                    <TextBox Text="{Binding BookDoctorSearch, UpdateSourceTrigger=PropertyChanged}" />
+                    <ComboBox Margin="0,4,0,8"
+                              IsEditable="True"
+                              IsTextSearchEnabled="True"
+                              StaysOpenOnEdit="True"
+                              ItemsSource="{Binding BookDoctorsView}"
+                              SelectedItem="{Binding SelectedBookDoctor}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <Run Text="{Binding LastName}" />
+                                    <Run Text=" " />
+                                    <Run Text="{Binding FirstName}" />
+                                    <Run Text=" - " />
+                                    <Run Text="{Binding Specialty}" />
+                                </TextBlock>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Border Background="#F1F5F9" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold" Text="{Binding BranchCaption}" />
+                            <TextBlock Text="{Binding BranchHint}" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Label Content="Date" />
+                    <DatePicker SelectedDate="{Binding BookDate}" Margin="0,0,0,8" />
+
+                    <DockPanel Margin="0,0,0,4">
+                        <Label Content="Available times" DockPanel.Dock="Left" />
+                        <Button Content="Refresh slots" Padding="8,4" DockPanel.Dock="Right"
+                                Command="{Binding LoadSlotsCommand}" />
+                    </DockPanel>
+                    <ListBox ItemsSource="{Binding AvailableSlots}"
+                             SelectedItem="{Binding SelectedSlotTime}"
+                             Height="100" Margin="0,0,0,8" />
+
+                    <Label Content="Start (manual override)" />
                     <TextBox Text="{Binding BookScheduledAtText, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="Example: 2026-04-06T14:30" Margin="0,0,0,8" />
                     <Label Content="Duration (min)" />
                     <TextBox Text="{Binding BookDuration, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
-                    <Button Content="Book" HorizontalAlignment="Left" Padding="12,6"
+                    <Button Content="Book" HorizontalAlignment="Left" Style="{StaticResource PrimaryButton}"
                             Command="{Binding BookAppointmentCommand}" />
                 </StackPanel>
             </TabItem>

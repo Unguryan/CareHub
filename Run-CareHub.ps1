@@ -105,13 +105,30 @@ function Invoke-DockerCompose {
     }
 }
 
+function Wait-ContainerHealthy {
+    param(
+        [Parameter(Mandatory)] [string] $ContainerName,
+        [int] $TimeoutSec = 120
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        $status = & docker inspect -f "{{.State.Health.Status}}" $ContainerName 2>$null
+        if ($LASTEXITCODE -eq 0 -and $status -eq 'healthy') {
+            return
+        }
+        Start-Sleep -Seconds 2
+    }
+
+    throw "Container '$ContainerName' did not become healthy in ${TimeoutSec}s. Check: docker compose -f docker-compose.yml logs $ContainerName"
+}
+
 function Invoke-EfDatabaseUpdate {
     param(
         [Parameter(Mandatory)] [string] $ProjectPath,
         [bool] $EfVerbose = $false
     )
 
-    $verbosity = if ($EfVerbose) { 'normal' } else { 'minimal' }
     $saved = @{}
 
     if (-not $EfVerbose) {
@@ -129,9 +146,60 @@ function Invoke-EfDatabaseUpdate {
         }
     }
 
+    $exitCode = 1
+
     try {
-        & dotnet ef database update --project $ProjectPath --startup-project $ProjectPath --verbosity $verbosity
-        return $LASTEXITCODE
+        # Start-Process yields a reliable .ExitCode on Windows PowerShell 5.1.
+        # With --verbose, EF often writes the same lines to stdout and stderr; redirecting both duplicates everything.
+        $argList = @(
+            'ef', 'database', 'update',
+            '--project', $ProjectPath,
+            '--startup-project', $ProjectPath
+        )
+        if ($EfVerbose) {
+            $argList += '--verbose'
+        }
+
+        $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
+        $cwd = (Get-Location).Path
+
+        if ($EfVerbose) {
+            $p = Start-Process -FilePath $dotnet -ArgumentList $argList `
+                -WorkingDirectory $cwd -Wait -PassThru -NoNewWindow
+            if ($null -ne $p.ExitCode) {
+                $exitCode = [int]$p.ExitCode
+            }
+        }
+        else {
+            $stdoutPath = [System.IO.Path]::GetTempFileName()
+            $stderrPath = [System.IO.Path]::GetTempFileName()
+            try {
+                $p = Start-Process -FilePath $dotnet -ArgumentList $argList `
+                    -WorkingDirectory $cwd `
+                    -Wait -PassThru -NoNewWindow `
+                    -RedirectStandardOutput $stdoutPath `
+                    -RedirectStandardError $stderrPath
+
+                if ($null -ne $p.ExitCode) {
+                    $exitCode = [int]$p.ExitCode
+                }
+            }
+            finally {
+                if (Test-Path -LiteralPath $stdoutPath) {
+                    $o = Get-Content -LiteralPath $stdoutPath -Raw -ErrorAction SilentlyContinue
+                    if ($o) { Write-Host $o }
+                }
+                if (Test-Path -LiteralPath $stderrPath) {
+                    $e = Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue
+                    if ($e) { Write-Host $e }
+                }
+                Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    catch {
+        Write-Host "Invoke-EfDatabaseUpdate: $($_.Exception.Message)" -ForegroundColor Red
+        $exitCode = 1
     }
     finally {
         foreach ($key in $saved.Keys) {
@@ -144,10 +212,19 @@ function Invoke-EfDatabaseUpdate {
             }
         }
     }
+
+    return $exitCode
 }
 
 $Root = $PSScriptRoot
 Set-Location $Root
+
+# Helps localized MSBuild lines (e.g. Russian) render correctly in the console.
+try {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+    $OutputEncoding = [Console]::OutputEncoding
+}
+catch { }
 
 $seedValue = if ($Mode -eq 'Seed') { 'true' } else { 'false' }
 $env:CareHub__SeedDemoData = $seedValue
@@ -186,14 +263,22 @@ if (-not $SkipDocker) {
         throw "Postgres did not become ready in time. Try: docker compose -f docker-compose.yml logs postgres"
     }
     Write-Host "Postgres is ready." -ForegroundColor Green
+
+    Write-Host "Waiting for RabbitMQ (carehub-rabbitmq)..." -ForegroundColor Yellow
+    Wait-ContainerHealthy -ContainerName 'carehub-rabbitmq'
+    Write-Host "RabbitMQ is ready." -ForegroundColor Green
+
+    Write-Host "Waiting for Redis (carehub-redis)..." -ForegroundColor Yellow
+    Wait-ContainerHealthy -ContainerName 'carehub-redis'
+    Write-Host "Redis is ready." -ForegroundColor Green
 }
 else {
     Write-Host "Skipping Docker (--SkipDocker)." -ForegroundColor Gray
 }
 
 if (-not $SkipMigrations) {
-    $null = dotnet ef --version 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    cmd.exe /c "dotnet ef --version & exit /b %ERRORLEVEL%"
+    if ($null -eq $LASTEXITCODE -or $LASTEXITCODE -ne 0) {
         throw "dotnet-ef is not available. Install: dotnet tool install --global dotnet-ef"
     }
 
@@ -220,7 +305,7 @@ if (-not $SkipMigrations) {
         Write-Host "EF migrate: $rel" -ForegroundColor Yellow
         $efExit = Invoke-EfDatabaseUpdate -ProjectPath $proj -EfVerbose:$VerboseMigrations.IsPresent
         if ($efExit -ne 0) {
-            throw "dotnet ef database update failed for $rel"
+            throw "dotnet ef database update failed for $rel (exit $efExit). Re-run with -VerboseMigrations or: dotnet ef database update --project `"$proj`" --startup-project `"$proj`""
         }
     }
     Write-Host "Database migrations applied." -ForegroundColor Green
@@ -246,9 +331,11 @@ if (-not $Run -and -not $RunWeb) {
 function Wait-HttpOk {
     param(
         [string] $Url,
-        [int] $TimeoutSec = 120
+        [int] $TimeoutSec = 120,
+        [string] $DumpJobOnTimeout = $null
     )
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $nextProgressSec = 10
     while ($sw.Elapsed.TotalSeconds -lt $TimeoutSec) {
         try {
             $r = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
@@ -257,10 +344,36 @@ function Wait-HttpOk {
             }
         }
         catch {
+            $elapsed = [int][Math]::Floor($sw.Elapsed.TotalSeconds)
+            if ($elapsed -ge $nextProgressSec) {
+                Write-Host "  ... still waiting (${elapsed}s / ${TimeoutSec}s): $Url" -ForegroundColor DarkGray
+                Write-Host "      If this takes long, check: Receive-Job -Name 'CareHub.Identity' -Keep (or the matching service job)" -ForegroundColor DarkGray
+                $nextProgressSec += 10
+            }
             Start-Sleep -Seconds 1
         }
     }
-    throw "Timed out waiting for $Url"
+    $lastChunkText = $null
+    if (-not [string]::IsNullOrEmpty($DumpJobOnTimeout)) {
+        $j = Get-Job -Name $DumpJobOnTimeout -ErrorAction SilentlyContinue
+        if ($j) {
+            Write-Host "--- Last job output: $DumpJobOnTimeout ---" -ForegroundColor Yellow
+            $chunk = Receive-Job -Job $j -Keep -ErrorAction SilentlyContinue
+            if ($chunk) {
+                $chunk | Select-Object -Last 50 | ForEach-Object { Write-Host $_ }
+                $lastChunkText = (($chunk | Select-Object -Last 200) -join [Environment]::NewLine)
+            }
+            else {
+                Write-Host "(no captured output yet; job state: $($j.State))" -ForegroundColor DarkGray
+            }
+        }
+    }
+
+    if ($lastChunkText -and $lastChunkText -match 'ACCESS_REFUSED' -and $lastChunkText -match 'RabbitMQ') {
+        throw "Timed out waiting for $Url (${TimeoutSec}s). Identity failed to connect to RabbitMQ (ACCESS_REFUSED). Run .\Cleanup-CareHub.ps1, then recreate RabbitMQ: docker compose down; docker compose up -d --force-recreate rabbitmq; then rerun .\Run-CareHub.ps1."
+    }
+
+    throw "Timed out waiting for $Url (${TimeoutSec}s). Another dotnet run may still own the port - try .\Cleanup-CareHub.ps1 then re-run."
 }
 
 function Start-CareHubDotnetJob {
@@ -284,10 +397,16 @@ if ($Run) {
     Write-Host ""
     Write-Host "Starting backend jobs (output: Receive-Job -Name '<name>' -Keep)..." -ForegroundColor Yellow
 
+    $oldCareHubJobs = Get-Job -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'CareHub*' }
+    if ($oldCareHubJobs) {
+        Write-Host "Warning: CareHub background jobs already exist (ports may be in use). Stop them first if the health wait times out:" -ForegroundColor Yellow
+        Write-Host "  .\Cleanup-CareHub.ps1" -ForegroundColor Gray
+    }
+
     Start-CareHubDotnetJob -JobName 'CareHub.Identity' -ProjectRelativePath 'Services\Identity\CareHub.Identity\CareHub.Identity.csproj' -SeedFlag $seedValue -RepoRoot $Root
 
     Write-Host "Waiting for Identity health..." -ForegroundColor Yellow
-    Wait-HttpOk -Url 'http://localhost:5001/health'
+    Wait-HttpOk -Url 'http://localhost:5001/health' -DumpJobOnTimeout 'CareHub.Identity'
 
     $parallel = @(
         @{ JobName = 'CareHub.Patient'; Path = 'Services\Patient\CareHub.Patient\CareHub.Patient.csproj' },
@@ -312,7 +431,7 @@ if ($Run) {
     Start-CareHubDotnetJob -JobName 'CareHub.Gateway' -ProjectRelativePath 'Gateway\CareHub.Gateway\CareHub.Gateway.csproj' -SeedFlag $seedValue -RepoRoot $Root
 
     Write-Host "Waiting for Gateway health..." -ForegroundColor Yellow
-    Wait-HttpOk -Url 'http://localhost:53615/health'
+    Wait-HttpOk -Url 'http://localhost:53615/health' -DumpJobOnTimeout 'CareHub.Gateway'
 
     Write-Host "Backend is up (Gateway http://localhost:53615)." -ForegroundColor Green
 }

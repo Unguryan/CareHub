@@ -52,6 +52,7 @@ public static class IdentitySeedData
             ("+380000000001", "Doctor1234!", "Doctor"),
             ("+380000000002", "User1234!", "Receptionist"),
             ("+380000000003", "Manager1234!", "Manager"),
+            ("+380000000004", "Lab1234!", "LabTechnician"),
         ];
 
         foreach (var (phone, password, role) in accounts)

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 
 namespace CareHub.Notification.Hubs;
 
@@ -10,7 +11,8 @@ public sealed class NotificationHub : Hub
 
     public Task Join()
     {
-        var sub = Context.User?.FindFirst("sub")?.Value;
+        var sub = Context.User?.FindFirst("sub")?.Value
+                  ?? Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (sub is null || !Guid.TryParse(sub, out var userId))
             throw new HubException("Missing or invalid subject claim.");
 

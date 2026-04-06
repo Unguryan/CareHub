@@ -53,7 +53,8 @@ if (-not $SkipJobs) {
     $careHubJobs = Get-Job -Name 'CareHub*' -ErrorAction SilentlyContinue
     if ($careHubJobs) {
         Write-Host "Stopping PowerShell jobs: $($careHubJobs.Name -join ', ')" -ForegroundColor Yellow
-        $careHubJobs | Stop-Job -Force -ErrorAction SilentlyContinue
+        # Windows PowerShell 5.1: Stop-Job has no -Force (PowerShell 7+ only).
+        $careHubJobs | Stop-Job -ErrorAction SilentlyContinue
         $careHubJobs | Remove-Job -Force -ErrorAction SilentlyContinue
         Write-Host "Jobs removed." -ForegroundColor Green
     }

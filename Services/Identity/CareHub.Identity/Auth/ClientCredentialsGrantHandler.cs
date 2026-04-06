@@ -26,7 +26,10 @@ public class ClientCredentialsGrantHandler : IOpenIddictServerHandler<OpenIddict
             roleType: Claims.Role);
 
         identity.SetClaim(Claims.Subject, context.Request.ClientId!);
-        identity.SetScopes(context.Request.GetScopes());
+        var requestedScopes = context.Request.GetScopes();
+        identity.SetScopes(requestedScopes);
+        if (requestedScopes.Contains("api"))
+            identity.SetResources("api");
         identity.SetDestinations(_ => [Destinations.AccessToken]);
 
         context.SignIn(new ClaimsPrincipal(identity));

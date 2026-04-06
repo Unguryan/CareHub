@@ -38,6 +38,13 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+if (!app.Environment.IsEnvironment("Test"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<PatientDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 if (app.Configuration.SeedDemoData())
 {
     using (var scope = app.Services.CreateScope())

@@ -68,9 +68,17 @@ export function PatientsPage() {
                   <td className="px-4 py-2">{p.phoneNumber}</td>
                   <td className="px-4 py-2 font-mono text-xs">{p.branchId.slice(0, 8)}…</td>
                   <td className="px-4 py-2 text-right">
-                    <Link className="text-teal-800 underline" to={`/patients/${p.id}`}>
-                      Open
-                    </Link>
+                    <div className="flex justify-end gap-3">
+                      <Link className="text-teal-800 underline" to={`/patients/${p.id}`}>
+                        Open
+                      </Link>
+                      <Link
+                        className="text-teal-800 underline"
+                        to={`/appointments?patientId=${encodeURIComponent(p.id)}`}
+                      >
+                        Book
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

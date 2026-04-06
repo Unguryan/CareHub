@@ -17,10 +17,14 @@ export function NotificationBell() {
   useEffect(() => {
     if (!accessToken) return
 
+    const getLiveAccessToken = () =>
+      (window as unknown as { __carehub_access?: string }).__carehub_access ??
+      accessToken
+
     const hub = `${gatewayUrl}/hubs/notifications`
     const connection = new HubConnectionBuilder()
       .withUrl(hub, {
-        accessTokenFactory: () => accessToken,
+        accessTokenFactory: () => getLiveAccessToken(),
         skipNegotiation: false,
         transport: undefined,
       })
@@ -42,8 +46,9 @@ export function NotificationBell() {
       try {
         await connection.start()
         if (connection.state === HubConnectionState.Connected) await connection.invoke('Join')
-      } catch {
-        /* dev: hub unavailable */
+      } catch (err) {
+        // Keep this visible in dev: negotiate/auth issues are otherwise hard to diagnose.
+        console.warn('Notification hub connection failed', err)
       }
     })()
 

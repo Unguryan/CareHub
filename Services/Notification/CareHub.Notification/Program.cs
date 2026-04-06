@@ -29,10 +29,34 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = context =>
             {
-                var accessToken = context.Request.Query["access_token"];
+                var accessTokenValues = context.Request.Query["access_token"];
+                var accessToken = accessTokenValues.Count > 0 ? accessTokenValues[0] : null;
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
                     context.Token = accessToken;
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Notification.Jwt");
+                logger.LogWarning(
+                    context.Exception,
+                    "JWT authentication failed for {Path}",
+                    context.HttpContext.Request.Path);
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Notification.Jwt");
+                logger.LogWarning(
+                    "JWT challenge on {Path}. Error: {Error}. Description: {Description}",
+                    context.HttpContext.Request.Path,
+                    context.Error,
+                    context.ErrorDescription);
                 return Task.CompletedTask;
             }
         };
@@ -86,6 +110,13 @@ builder.Services.AddMassTransit(x =>
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+if (!app.Environment.IsEnvironment("Test"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 if (app.Configuration.SeedDemoData())
 {

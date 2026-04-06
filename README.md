@@ -151,6 +151,35 @@ Health: the script waits until `pg_isready` succeeds inside `carehub-postgres`.
 
 ---
 
+## Full Docker mode (all microservices)
+
+Default `docker-compose.yml` runs only infrastructure.  
+To run **all APIs + gateway + web** in containers, use the compose overlay:
+
+```powershell
+# Build and run infra + full CareHub app stack
+docker compose -f docker-compose.yml -f docker-compose.full.yml --profile full up -d --build
+
+# Stop full stack
+docker compose -f docker-compose.yml -f docker-compose.full.yml --profile full down
+```
+
+Notes:
+
+- Uses `build/docker/Dockerfile.dotnet-service` for all .NET services.
+- Uses `build/docker/Dockerfile.webportal` for Vite web container (`http://localhost:5173`).
+- Gateway runs with `Gateway/CareHub.Gateway/appsettings.Docker.json` so reverse-proxy destinations point to container service names.
+- Seed mode in containers is controlled by env var `CAREHUB_SEED_DEMO_DATA` (default `true`).
+
+Example (clean mode in full Docker):
+
+```powershell
+$env:CAREHUB_SEED_DEMO_DATA = "false"
+docker compose -f docker-compose.yml -f docker-compose.full.yml --profile full up -d --build
+```
+
+---
+
 ## Database migrations
 
 The script runs, in order:
@@ -208,6 +237,7 @@ Sign-in uses **phone number** as the username (resource owner password flow via 
 | **doctor1** | `+380000000001` | `Doctor1234!` | Doctor |
 | **user1** (receptionist) | `+380000000002` | `User1234!` | Receptionist |
 | **manager1** | `+380000000003` | `Manager1234!` | Manager |
+| **lab1** | `+380000000004` | `Lab1234!` | LabTechnician |
 
 Web OIDC client (from seed): **`carehub-web`** / secret **`web-secret`** (see `Clients/WebPortal/.env.development`).
 

@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CareHub.Desktop.Services;
@@ -25,20 +27,36 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _newEmail = "";
     [ObservableProperty] private DateTime _newDob = DateTime.Today.AddYears(-30);
 
-    [ObservableProperty] private string _bookPatientId = "";
-    [ObservableProperty] private string _bookDoctorId = "";
-    [ObservableProperty] private string _bookBranchId = "00000000-0000-0000-0000-000000000001";
-    /// <summary>Local date/time; parsed with DateTime.TryParse to UTC for the API.</summary>
-    [ObservableProperty] private string _bookScheduledAtText =
-        DateTime.Now.AddHours(1).ToString("yyyy-MM-ddTHH:mm");
+    [ObservableProperty] private string _bookPatientSearch = "";
+    [ObservableProperty] private string _bookDoctorSearch = "";
+    [ObservableProperty] private string _selectedSpecialty = "All";
+    [ObservableProperty] private DateTime _bookDate = DateTime.Today.AddDays(1);
+    [ObservableProperty] private PatientRow? _selectedBookPatient;
+    [ObservableProperty] private DoctorRow? _selectedBookDoctor;
+    [ObservableProperty] private string? _selectedSlotTime;
+    /// <summary>Local date/time; user can still override manually.</summary>
+    [ObservableProperty] private string _bookScheduledAtText = DateTime.Now.AddHours(1).ToString("yyyy-MM-ddTHH:mm");
     [ObservableProperty] private int _bookDuration = 30;
+    [ObservableProperty] private string _branchCaption = "Main clinic";
+    [ObservableProperty] private string _branchHint = "Appointments are created in the doctor's branch.";
 
     [ObservableProperty] private string _documentId = "";
     [ObservableProperty] private bool _showLabTab;
     public ObservableCollection<LabRow> LabOrders { get; } = new();
+    public ObservableCollection<PatientRow> BookPatients { get; } = new();
+    public ObservableCollection<DoctorRow> BookDoctors { get; } = new();
+    public ObservableCollection<string> SpecialtyOptions { get; } = new(["All"]);
+    public ObservableCollection<string> AvailableSlots { get; } = new();
+
+    public ICollectionView BookPatientsView { get; }
+    public ICollectionView BookDoctorsView { get; }
 
     public MainViewModel()
     {
+        BookPatientsView = CollectionViewSource.GetDefaultView(BookPatients);
+        BookPatientsView.Filter = FilterPatient;
+        BookDoctorsView = CollectionViewSource.GetDefaultView(BookDoctors);
+        BookDoctorsView.Filter = FilterDoctor;
         _ = TryStartupRefreshAsync();
     }
 
@@ -51,6 +69,8 @@ public partial class MainViewModel : ObservableObject
                 IsSignedIn = true;
                 StatusMessage = "Restored session.";
                 RefreshRoleFlags();
+                await SearchPatientsAsync(CancellationToken.None);
+                await LoadDoctorsAsync(CancellationToken.None);
             }
         }
         catch
@@ -68,6 +88,8 @@ public partial class MainViewModel : ObservableObject
             IsSignedIn = true;
             StatusMessage = "Signed in.";
             RefreshRoleFlags();
+            await SearchPatientsAsync(ct);
+            await LoadDoctorsAsync(ct);
         }
         catch (Exception ex)
         {
@@ -104,6 +126,10 @@ public partial class MainViewModel : ObservableObject
             Patients.Clear();
             foreach (var r in rows)
                 Patients.Add(r);
+            BookPatients.Clear();
+            foreach (var r in rows)
+                BookPatients.Add(r);
+            BookPatientsView.Refresh();
             StatusMessage = $"Found {Patients.Count} patient(s).";
         }
         catch (Exception ex)
@@ -127,7 +153,9 @@ public partial class MainViewModel : ObservableObject
             });
             var json = await _session.PostJsonAsync("/api/patients", body, ct);
             var created = _session.Deserialize<PatientRow>(json);
-            StatusMessage = created is null ? "Patient created." : $"Patient {created.Id} created.";
+            StatusMessage = created is null
+                ? "Patient created."
+                : $"{created.FirstName} {created.LastName} created.";
             await SearchPatientsAsync(ct);
         }
         catch (Exception ex)
@@ -141,10 +169,9 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            if (!Guid.TryParse(BookPatientId, out var pid) || !Guid.TryParse(BookDoctorId, out var did)
-                || !Guid.TryParse(BookBranchId, out var bid))
+            if (SelectedBookPatient is null || SelectedBookDoctor is null)
             {
-                StatusMessage = "Patient, doctor, and branch must be valid GUIDs.";
+                StatusMessage = "Select patient and doctor first.";
                 return;
             }
 
@@ -156,19 +183,128 @@ public partial class MainViewModel : ObservableObject
 
             var body = System.Text.Json.JsonSerializer.Serialize(new
             {
-                patientId = pid,
-                doctorId = did,
-                branchId = bid,
-                scheduledAt = localWhen.ToUniversalTime().ToString("o"),
+                patientId = SelectedBookPatient.Id,
+                doctorId = SelectedBookDoctor.Id,
+                branchId = SelectedBookDoctor.BranchId,
+                scheduledAt = localWhen.ToString("yyyy-MM-ddTHH:mm:ss"),
                 durationMinutes = BookDuration,
             });
             await _session.PostJsonAsync("/api/appointments", body, ct);
             StatusMessage = "Appointment booked.";
+            await LoadSlotsAsync(ct);
         }
         catch (Exception ex)
         {
             StatusMessage = "Booking failed: " + ex.Message;
         }
+    }
+
+    [RelayCommand]
+    private async Task LoadDoctorsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var json = await _session.GetJsonAsync("/api/doctors", ct);
+            var rows = _session.Deserialize<List<DoctorRow>>(json) ?? [];
+            BookDoctors.Clear();
+            foreach (var r in rows.Where(x => x.IsActive))
+                BookDoctors.Add(r);
+
+            var specialties = rows.Select(x => x.Specialty).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x);
+            SpecialtyOptions.Clear();
+            SpecialtyOptions.Add("All");
+            foreach (var s in specialties)
+                SpecialtyOptions.Add(s!);
+
+            BookDoctorsView.Refresh();
+            UpdateBranchLabel();
+            await LoadSlotsAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Loading doctors failed: " + ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadSlotsAsync(CancellationToken ct)
+    {
+        if (SelectedBookDoctor is null)
+        {
+            AvailableSlots.Clear();
+            return;
+        }
+
+        try
+        {
+            var date = DateOnly.FromDateTime(BookDate).ToString("yyyy-MM-dd");
+            var json = await _session.GetJsonAsync($"/api/doctors/{SelectedBookDoctor.Id}/slots?date={Uri.EscapeDataString(date)}", ct);
+            var rows = _session.Deserialize<List<SlotRow>>(json) ?? [];
+            AvailableSlots.Clear();
+            foreach (var slot in rows.Select(x => x.SlotTime).Where(x => !string.IsNullOrWhiteSpace(x)))
+                AvailableSlots.Add(slot!);
+
+            if (AvailableSlots.Count > 0)
+                SelectedSlotTime = AvailableSlots[0];
+            else
+                SelectedSlotTime = null;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Loading slots failed: " + ex.Message;
+        }
+    }
+
+    partial void OnBookPatientSearchChanged(string value) => BookPatientsView.Refresh();
+    partial void OnBookDoctorSearchChanged(string value) => BookDoctorsView.Refresh();
+    partial void OnSelectedSpecialtyChanged(string value) => BookDoctorsView.Refresh();
+
+    partial void OnSelectedBookDoctorChanged(DoctorRow? value)
+    {
+        UpdateBranchLabel();
+        _ = LoadSlotsAsync(CancellationToken.None);
+    }
+
+    partial void OnBookDateChanged(DateTime value) => _ = LoadSlotsAsync(CancellationToken.None);
+
+    partial void OnSelectedSlotTimeChanged(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+        BookScheduledAtText = $"{BookDate:yyyy-MM-dd}T{value}";
+    }
+
+    private bool FilterPatient(object obj)
+    {
+        if (obj is not PatientRow p) return false;
+        if (string.IsNullOrWhiteSpace(BookPatientSearch)) return true;
+        var q = BookPatientSearch.Trim();
+        return $"{p.FirstName} {p.LastName} {p.PhoneNumber}"
+            .Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool FilterDoctor(object obj)
+    {
+        if (obj is not DoctorRow d) return false;
+        if (!string.Equals(SelectedSpecialty, "All", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(SelectedSpecialty, d.Specialty, StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (string.IsNullOrWhiteSpace(BookDoctorSearch)) return true;
+        var q = BookDoctorSearch.Trim();
+        return $"{d.FirstName} {d.LastName} {d.Specialty}".Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void UpdateBranchLabel()
+    {
+        if (SelectedBookDoctor is null)
+        {
+            BranchCaption = "Main clinic";
+            BranchHint = "Choose doctor to determine branch.";
+            return;
+        }
+
+        BranchCaption = "Clinic branch";
+        BranchHint = $"{SelectedBookDoctor.BranchId} (auto from doctor)";
     }
 
     [RelayCommand]
@@ -257,3 +393,13 @@ public record PatientRow(
 public record AppointmentRow(Guid Id, Guid PatientId, int Status);
 
 public record LabRow(Guid Id, int Status, Guid PatientId);
+
+public record DoctorRow(
+    Guid Id,
+    string FirstName,
+    string LastName,
+    string Specialty,
+    Guid BranchId,
+    bool IsActive);
+
+public record SlotRow(string? SlotTime);

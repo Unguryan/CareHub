@@ -52,6 +52,13 @@ builder.Services.AddOpenIddict()
         options.SetTokenEndpointUris("/connect/token");
         options.SetUserinfoEndpointUris("/connect/userinfo");
 
+        var configuredIssuer = builder.Configuration["Identity:Issuer"];
+        if (!string.IsNullOrWhiteSpace(configuredIssuer)
+            && Uri.TryCreate(configuredIssuer, UriKind.Absolute, out var issuerUri))
+        {
+            options.SetIssuer(issuerUri);
+        }
+
         options.AllowPasswordFlow()
                .AllowClientCredentialsFlow()
                .AllowRefreshTokenFlow();
@@ -61,6 +68,10 @@ builder.Services.AddOpenIddict()
             Scopes.Profile,
             Scopes.OfflineAccess,
             "api");
+
+        // Resource services use standard JwtBearer validation.
+        // Emit signed (not encrypted) access tokens so downstream APIs/hubs can validate them.
+        options.DisableAccessTokenEncryption();
 
         options.AddDevelopmentEncryptionCertificate()
                .AddDevelopmentSigningCertificate();
@@ -132,6 +143,13 @@ builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Ensure schema exists in the exact database this running instance uses.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 // Seed infrastructure (always) and optional demo users
 using (var scope = app.Services.CreateScope())

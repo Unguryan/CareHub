@@ -50,6 +50,13 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
+if (!app.Environment.IsEnvironment("Test"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AuditDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 

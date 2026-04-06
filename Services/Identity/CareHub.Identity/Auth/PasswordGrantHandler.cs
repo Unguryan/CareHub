@@ -58,7 +58,10 @@ public class PasswordGrantHandler : IOpenIddictServerHandler<OpenIddictServerEve
                 .SetClaims(Claims.Role, [.. roles])
                 .SetClaim("branch_id", user.BranchId.ToString());
 
-        identity.SetScopes(context.Request.GetScopes());
+        var requestedScopes = context.Request.GetScopes();
+        identity.SetScopes(requestedScopes);
+        if (requestedScopes.Contains("api"))
+            identity.SetResources("api");
         identity.SetDestinations(GetDestinations);
 
         await _eventPublisher.PublishUserLoggedInAsync(user, [.. roles]);

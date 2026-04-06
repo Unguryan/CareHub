@@ -1,0 +1,350 @@
+services:
+  identity:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Identity/CareHub.Identity/CareHub.Identity.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5001
+      Urls: http://0.0.0.0:5001
+      Identity__Issuer: http://identity:5001
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Identity: Host=postgres;Port=5432;Database=carehub_identity;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Redis__ConnectionString: redis:6379
+      TelegramBot__InternalBaseUrl: http://telegrambot:5011
+    command: ["CareHub.Identity.dll"]
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  patient:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Patient/CareHub.Patient/CareHub.Patient.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5002
+      Urls: http://0.0.0.0:5002
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Patient: Host=postgres;Port=5432;Database=carehub_patient;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+    command: ["CareHub.Patient.dll"]
+    ports:
+      - "5002:5002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  appointment:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Appointment/CareHub.Appointment/CareHub.Appointment.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5003
+      Urls: http://0.0.0.0:5003
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Appointment: Host=postgres;Port=5432;Database=carehub_appointment;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Patient__BaseUrl: http://patient:5002
+      Schedule__BaseUrl: http://schedule:5004
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Appointment.dll"]
+    ports:
+      - "5003:5003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  schedule:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Schedule/CareHub.Schedule/CareHub.Schedule.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5004
+      Urls: http://0.0.0.0:5004
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Schedule: Host=postgres;Port=5432;Database=carehub_schedule;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Schedule.dll"]
+    ports:
+      - "5004:5004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  billing:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Billing/CareHub.Billing/CareHub.Billing.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5005
+      Urls: http://0.0.0.0:5005
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Billing: Host=postgres;Port=5432;Database=carehub_billing;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Billing.dll"]
+    ports:
+      - "5005:5005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  laboratory:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Laboratory/CareHub.Laboratory/CareHub.Laboratory.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5006
+      Urls: http://0.0.0.0:5006
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Laboratory: Host=postgres;Port=5432;Database=carehub_laboratory;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Laboratory.dll"]
+    ports:
+      - "5006:5006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  notification:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Notification/CareHub.Notification/CareHub.Notification.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5007
+      Urls: http://0.0.0.0:5007
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Notification: Host=postgres;Port=5432;Database=carehub_notification;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Notification.dll"]
+    ports:
+      - "5007:5007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  audit:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Audit/CareHub.Audit/CareHub.Audit.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5008
+      Urls: http://0.0.0.0:5008
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Audit: Host=postgres;Port=5432;Database=carehub_audit;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Audit.dll"]
+    ports:
+      - "5008:5008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  document:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Document/CareHub.Document/CareHub.Document.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5009
+      Urls: http://0.0.0.0:5009
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Document: Host=postgres;Port=5432;Database=carehub_document;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Document.dll"]
+    ports:
+      - "5009:5009"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  reporting:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Services/Reporting/CareHub.Reporting/CareHub.Reporting.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:5010
+      Urls: http://0.0.0.0:5010
+      CareHub__SeedDemoData: ${CAREHUB_SEED_DEMO_DATA:-true}
+      ConnectionStrings__Reporting: Host=postgres;Port=5432;Database=carehub_reporting;Username=carehub;Password=carehub_dev
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: carehub
+      RabbitMq__Password: carehub_dev
+      Identity__Authority: http://identity:5001
+      Identity__InternalApiBaseUrl: http://identity:5001
+      Identity__InternalApiKey: dev-internal-key-change-in-production
+    command: ["CareHub.Reporting.dll"]
+    ports:
+      - "5010:5010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      identity:
+        condition: service_started
+
+  gateway:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.dotnet-service
+      args:
+        PROJECT_PATH: Gateway/CareHub.Gateway/CareHub.Gateway.csproj
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:53615
+      Urls: http://0.0.0.0:53615
+      Identity__Authority: http://identity:5001
+    command: ["CareHub.Gateway.dll"]
+    ports:
+      - "53615:53615"
+    depends_on:
+      identity:
+        condition: service_started
+      patient:
+        condition: service_started
+      appointment:
+        condition: service_started
+      schedule:
+        condition: service_started
+      billing:
+        condition: service_started
+      laboratory:
+        condition: service_started
+      notification:
+        condition: service_started
+      audit:
+        condition: service_started
+      document:
+        condition: service_started
+      reporting:
+        condition: service_started
+
+  webportal:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: build/docker/Dockerfile.webportal
+    environment:
+      VITE_GATEWAY_URL: http://localhost:53615
+      VITE_OIDC_CLIENT_ID: carehub-web
+      VITE_OIDC_CLIENT_SECRET: web-secret
+    ports:
+      - "5173:5173"
+    depends_on:
+      gateway:
+        condition: service_started
